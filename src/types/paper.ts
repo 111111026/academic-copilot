@@ -7,6 +7,7 @@ export interface Paper {
   source: 'upload' | 'openalex' | 'arxiv' | 'manual';
   doi?: string;
   url?: string;
+  venue?: string;
   fullText?: string;
   chunks?: TextChunk[];
   summary?: string;
