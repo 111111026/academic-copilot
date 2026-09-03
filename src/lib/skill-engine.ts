@@ -13,11 +13,21 @@ export interface SkillRunOptions {
   onStepDone?: (index: number, result: StepResult) => void;
 }
 
-function resolveTemplate(step: SkillStep, userInputs: Record<string, string>, results: Record<string, string>): string {
+/** 选填输入留空时的占位文案。用「未填写」而非「无」：后者会被模型读成
+ *  「没有要求」这一事实断言，而实际情况是用户没提供信息。 */
+const EMPTY_INPUT_FALLBACK = '（未填写）';
+
+function resolveTemplate(
+  skill: Skill,
+  step: SkillStep,
+  userInputs: Record<string, string>,
+  results: Record<string, string>,
+): string {
   // 自定义 Skill 创建器只产出 promptTemplate，inputFrom 是空的，
   // 模板里的 {字段ID} / {步骤ID} 得靠先铺开整个作用域才能替换掉；
   // 显式 binding 之后再覆盖一次，constant 才有意义
   const vars: Record<string, string> = { ...userInputs, ...results };
+  const constants = new Set<string>();
   for (const binding of step.inputFrom) {
     const key = binding.key ?? binding.value ?? '';
     switch (binding.source) {
@@ -29,7 +39,15 @@ function resolveTemplate(step: SkillStep, userInputs: Record<string, string>, re
         break;
       case 'constant':
         vars[key] = binding.value ?? '';
+        constants.add(key);
         break;
+    }
+  }
+  // 必须放在 binding 之后：userInput 绑定会把空值重新写成 ''。
+  // 只兜底声明过的输入字段，未声明的占位符仍原样漏出，装配漏洞才看得见。
+  for (const input of skill.inputs) {
+    if (!constants.has(input.id) && !(vars[input.id] ?? '').trim()) {
+      vars[input.id] = EMPTY_INPUT_FALLBACK;
     }
   }
   return fill(step.promptTemplate, vars);
@@ -73,7 +91,7 @@ export async function runSkill(options: SkillRunOptions): Promise<SkillExecution
     stepResult.status = 'running';
     onStepStart?.(i, step);
 
-    const systemPrompt = resolveTemplate(step, userInputs, results);
+    const systemPrompt = resolveTemplate(skill, step, userInputs, results);
     const started = Date.now();
 
     try {
