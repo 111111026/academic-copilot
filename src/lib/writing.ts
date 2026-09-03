@@ -1,4 +1,6 @@
 import { PROMPTS } from '@/config/prompts';
+import { fill } from '@/lib/prompt';
+import type { PromptRequest } from '@/lib/prompt';
 import type { Paper } from '@/types/paper';
 
 export type WritingMode =
@@ -8,9 +10,6 @@ export type WritingMode =
   | 'expand'
   | 'translate'
   | 'references';
-
-/** 与 TextArea 的 maxLength 共用，超长文本会直接撑爆上下文窗口 */
-export const MAX_INPUT_CHARS = 12000;
 
 export const DEFAULT_POLISH_STYLE = '规范、精炼的学术书面语';
 
@@ -23,18 +22,6 @@ export const WRITING_TEMPERATURE: Record<WritingMode, number> = {
   translate: 0.2,
   references: 0.1,
 };
-
-/**
- * 用带函数的 replace 做单趟替换：
- * 传字符串时 replace 只替换第一处，且替换串里的 `$&`、`$1` 会被当成特殊模式，
- * 用户文本或题录里出现 `$` 就会拼出错乱的 prompt；
- * 单趟扫描也保证用户内容里万一含 `{style}` 这类字面量不会被二次替换。
- */
-export function fill(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
-    Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : match,
-  );
-}
 
 export type TranslateDirection = 'auto' | 'zh2en' | 'en2zh';
 
@@ -91,20 +78,12 @@ export interface WritingFields {
   references?: string;
 }
 
-export interface WritingRequest {
-  system: string;
-  user: string;
-}
-
 /**
  * 六种模式共用的请求装配。方案里润色/降重/扩写/互译的 systemPrompt 没有文本占位符，
  * 待处理正文走 user 消息；大纲和参考文献格式化的全部槽位都在 systemPrompt 内，
  * user 消息只作触发，避免同一份内容在两处重复占用上下文。
  */
-export function buildWritingRequest(
-  mode: WritingMode,
-  fields: WritingFields,
-): WritingRequest {
+export function buildWritingRequest(mode: WritingMode, fields: WritingFields): PromptRequest {
   const text = fields.text ?? '';
   switch (mode) {
     case 'polish':
@@ -151,40 +130,4 @@ export function buildWritingRequest(
         user: '请开始转换。',
       };
   }
-}
-
-function legacyCopy(text: string): boolean {
-  const area = document.createElement('textarea');
-  area.value = text;
-  area.setAttribute('readonly', '');
-  // 固定在视口外，否则 iOS Safari 会因聚焦而滚动页面并放大字号
-  area.style.position = 'fixed';
-  area.style.top = '-1000px';
-  area.style.opacity = '0';
-  document.body.appendChild(area);
-  area.select();
-  let ok = false;
-  try {
-    ok = document.execCommand('copy');
-  } catch {
-    ok = false;
-  }
-  area.remove();
-  return ok;
-}
-
-/**
- * 方案要求可部署到任意静态服务器，http 环境下 navigator.clipboard 根本不存在，
- * 所以必须保留 execCommand 兜底，否则「复制结果」在自建部署上直接失效。
- */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // 权限被拒或页面失焦时落到兜底路径
-  }
-  return legacyCopy(text);
 }
