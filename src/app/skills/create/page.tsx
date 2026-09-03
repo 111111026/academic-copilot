@@ -111,7 +111,7 @@ export default function SkillCreatorPage() {
 
     await saveCustomSkill(skill);
     messageApi.success('已保存');
-    router.push(`/skills/${skill.id}`);
+    router.push(`/skills/run?id=${skill.id}`);
   };
 
   const handleExport = () => {

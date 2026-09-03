@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Alert,
   Button,
@@ -39,9 +39,9 @@ import type { Skill, SkillInput } from '@/types/skill';
 import type { SkillExecution } from '@/types/execution';
 
 function SkillRunBody() {
-  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const execParam = searchParams.get('exec');
   const llm = useSettings((s) => s.settings.llm);
   const [messageApi, contextHolder] = message.useMessage();
@@ -54,6 +54,11 @@ function SkillRunBody() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    if (!id) {
+      setSkill(null);
+      setLoading(false);
+      return;
+    }
     const builtin = getBuiltinSkill(id);
     if (builtin) {
       setSkill(builtin);
@@ -205,7 +210,11 @@ function SkillRunBody() {
   if (!skill) {
     return (
       <AppShell>
-        <Alert type="error" message="Skill 不存在" description={`找不到 ID 为「${id}」的 Skill。`} />
+        <Alert
+          type="error"
+          title={id ? 'Skill 不存在' : '缺少 Skill ID'}
+          description={id ? `找不到 ID 为「${id}」的 Skill。` : '请从 Skills 中心选择一个 Skill 进入。'}
+        />
         <Link href="/skills">
           <Button type="link" icon={<ArrowLeftOutlined />} style={{ marginTop: 12 }}>
             返回 Skills 中心
