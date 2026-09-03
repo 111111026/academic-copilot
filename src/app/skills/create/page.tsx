@@ -44,13 +44,26 @@ const INPUT_TYPE_OPTIONS = [
   { value: 'number', label: '数字' },
 ];
 
-function emptyInput(): SkillInput {
-  return { id: crypto.randomUUID().slice(0, 8), label: '', type: 'textarea', required: true, placeholder: '' };
+/**
+ * 新建字段/步骤的 ID 必须是确定性的：这一页在构建期就被预渲染过，浏览器水合时
+ * useState 初始化会再跑一遍，用 crypto.randomUUID() 两边必然产出不同的 ID，
+ * 而 ID 是直接渲染成可见文本的（「字段 ID：…」），React 会报水合不匹配。
+ * 顺带让 ID 可读——用户要把它抄进 Prompt 模板的 {占位符} 里。
+ */
+function nextId(prefix: string, existingIds: string[]): string {
+  const taken = new Set(existingIds);
+  let n = taken.size + 1;
+  while (taken.has(`${prefix}${n}`)) n++;
+  return `${prefix}${n}`;
 }
 
-function emptyStep(): SkillStep {
+function emptyInput(existingIds: string[]): SkillInput {
+  return { id: nextId('field', existingIds), label: '', type: 'textarea', required: true, placeholder: '' };
+}
+
+function emptyStep(existingIds: string[]): SkillStep {
   return {
-    id: crypto.randomUUID().slice(0, 8),
+    id: nextId('step', existingIds),
     name: '',
     inputFrom: [],
     promptTemplate: '',
@@ -66,8 +79,8 @@ export default function SkillCreatorPage() {
   const [icon, setIcon] = useState('⚡');
   const [category, setCategory] = useState<Skill['category']>('custom');
   const [tags, setTags] = useState('');
-  const [inputs, setInputs] = useState<SkillInput[]>([emptyInput()]);
-  const [steps, setSteps] = useState<SkillStep[]>([emptyStep()]);
+  const [inputs, setInputs] = useState<SkillInput[]>(() => [emptyInput([])]);
+  const [steps, setSteps] = useState<SkillStep[]>(() => [emptyStep([])]);
   const [error, setError] = useState('');
 
   const validate = (): string | null => {
@@ -198,7 +211,7 @@ export default function SkillCreatorPage() {
         size="small"
         title="输入字段"
         style={{ marginBottom: 16 }}
-        extra={<Button size="small" icon={<PlusOutlined />} onClick={() => setInputs([...inputs, emptyInput()])}>添加</Button>}
+        extra={<Button size="small" icon={<PlusOutlined />} onClick={() => setInputs([...inputs, emptyInput(inputs.map((i) => i.id))])}>添加</Button>}
       >
         {inputs.map((inp, idx) => (
           <Card key={inp.id} size="small" type="inner" style={{ marginBottom: 8 }}
@@ -239,7 +252,7 @@ export default function SkillCreatorPage() {
         size="small"
         title="执行步骤"
         style={{ marginBottom: 16 }}
-        extra={<Button size="small" icon={<PlusOutlined />} onClick={() => setSteps([...steps, emptyStep()])}>添加</Button>}
+        extra={<Button size="small" icon={<PlusOutlined />} onClick={() => setSteps([...steps, emptyStep(steps.map((s) => s.id))])}>添加</Button>}
       >
         {steps.map((step, idx) => (
           <Card key={step.id} size="small" type="inner" style={{ marginBottom: 8 }}
