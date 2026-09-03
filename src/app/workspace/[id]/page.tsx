@@ -46,7 +46,9 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
   }, [paper?.id, paper?.summary]);
 
   const generateSummary = async () => {
-    if (!paper?.fullText) return;
+    if (!paper) return;
+    const basis = paper.fullText || paper.abstract;
+    if (!basis) return;
     setSummarizing(true);
     setError('');
     setSummary('');
@@ -54,7 +56,7 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
       const text = await chat(llm, {
         messages: [
           { role: 'system', content: PROMPTS.summarizePaper.systemPrompt },
-          { role: 'user', content: paper.fullText.slice(0, 60000) },
+          { role: 'user', content: basis.slice(0, 60000) },
         ],
         temperature: 0.3,
         onDelta: (d) => setSummary((prev) => prev + d),
@@ -75,7 +77,9 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
     setError('');
     setQaTurns((prev) => [...prev, { question: q, answer: '' }]);
     try {
-      const context = retrieveContext(paper.chunks ?? [], q);
+      const context = paper.chunks?.length
+        ? retrieveContext(paper.chunks, q)
+        : paper.abstract || '';
       const history: ChatMessage[] = qaTurns.slice(-4).flatMap((t) => [
         { role: 'user' as const, content: t.question },
         { role: 'assistant' as const, content: t.answer },
@@ -148,13 +152,22 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
             icon={<ThunderboltOutlined />}
             onClick={generateSummary}
             loading={summarizing}
-            disabled={!paper.fullText}
+            disabled={!paper.fullText && !paper.abstract}
           >
             {summary ? '重新生成' : '生成总结'}
           </Button>
         }
         style={{ marginBottom: 24 }}
       >
+        {!paper.fullText && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="这篇文献只有题录与摘要，没有全文"
+            description="检索导入的条目不含 PDF 全文，总结与问答仅基于摘要生成，深度有限。如需完整分析，请下载原文后到「文献工作台」上传。"
+          />
+        )}
         {summarizing && !summary && <Spin tip="AI 正在阅读论文..." />}
         {summary ? (
           <div className="markdown-body">
