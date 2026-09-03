@@ -41,10 +41,10 @@ import {
   buildMarkdownDocument,
   compareBasis,
   compareFilename,
-  downloadTextFile,
   parseMarkdownTable,
   tableToCsv,
 } from '@/lib/compare';
+import { downloadTextFile } from '@/lib/download';
 import type { Comparison, Paper } from '@/types';
 
 type ResultRow = Record<string, string>;

@@ -1,11 +1,15 @@
 import Dexie, { type Table } from 'dexie';
 import type { Paper, TextChunk } from '@/types/paper';
 import type { Comparison } from '@/types/compare';
+import type { SkillExecution } from '@/types/execution';
+import type { Skill } from '@/types/skill';
 
 class AcademicCopilotDB extends Dexie {
   papers!: Table<Paper, string>;
   chunks!: Table<TextChunk, string>;
   comparisons!: Table<Comparison, string>;
+  skillExecutions!: Table<SkillExecution, string>;
+  customSkills!: Table<Skill, string>;
 
   constructor() {
     super('academic-copilot');
@@ -17,6 +21,13 @@ class AcademicCopilotDB extends Dexie {
       papers: 'id, title, addedAt, year, source',
       chunks: 'id, paperId, chunkIndex',
       comparisons: 'id, createdAt',
+    });
+    this.version(3).stores({
+      papers: 'id, title, addedAt, year, source',
+      chunks: 'id, paperId, chunkIndex',
+      comparisons: 'id, createdAt',
+      skillExecutions: 'id, skillId, startedAt, status',
+      customSkills: 'id, name, category',
     });
   }
 }
@@ -43,4 +54,20 @@ export async function saveComparison(comparison: Comparison): Promise<void> {
 
 export async function deleteComparison(id: string): Promise<void> {
   await db.comparisons.delete(id);
+}
+
+export async function saveExecution(execution: SkillExecution): Promise<void> {
+  await db.skillExecutions.put(execution);
+}
+
+export async function deleteExecution(id: string): Promise<void> {
+  await db.skillExecutions.delete(id);
+}
+
+export async function saveCustomSkill(skill: Skill): Promise<void> {
+  await db.customSkills.put(skill);
+}
+
+export async function deleteCustomSkill(id: string): Promise<void> {
+  await db.customSkills.delete(id);
 }
