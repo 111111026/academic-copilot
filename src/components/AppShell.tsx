@@ -10,6 +10,7 @@ import {
   SearchOutlined,
   SettingOutlined,
   SwapOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -29,11 +30,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
     { key: '/writing', icon: <EditOutlined />, label: <Link href="/writing">写作助手</Link> },
     { key: '/code', icon: <CodeOutlined />, label: <Link href="/code">数据与代码</Link> },
     { key: '/mentor', icon: <CommentOutlined />, label: <Link href="/mentor">导师沟通</Link> },
+    { key: '/skills', icon: <ThunderboltOutlined />, label: <Link href="/skills">Skills 中心</Link> },
     { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">设置</Link> },
   ];
 
   const selected =
-    pathname.startsWith('/workspace') || pathname === '/' ? '/workspace' : pathname;
+    pathname.startsWith('/workspace') || pathname === '/'
+      ? '/workspace'
+      : pathname.startsWith('/skills')
+        ? '/skills'
+        : pathname;
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
