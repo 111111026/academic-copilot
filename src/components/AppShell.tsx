@@ -6,6 +6,7 @@ import {
   ReadOutlined,
   SearchOutlined,
   SettingOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -21,6 +22,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const items = [
     { key: '/workspace', icon: <ReadOutlined />, label: <Link href="/workspace">文献工作台</Link> },
     { key: '/search', icon: <SearchOutlined />, label: <Link href="/search">文献检索</Link> },
+    { key: '/compare', icon: <SwapOutlined />, label: <Link href="/compare">文献对比</Link> },
     { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">设置</Link> },
   ];
 
