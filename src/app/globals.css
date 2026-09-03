@@ -25,3 +25,162 @@ body {
     text-wrap: balance;
   }
 }
+
+/* react-markdown 的输出容器。
+   Tailwind preflight 会把 h1 至 h6 的字号字重重置为继承、把标题与 p、pre 的 margin 归零、
+   把 ul 与 ol 的 list-style 去掉，不加这些规则的话所有 Markdown 结果都会糊成一整块文字。
+   选择器统一带 .markdown-body 前缀，特异性稳过 preflight，不依赖源码顺序。 */
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1.2em 0 0.5em;
+}
+
+.markdown-body h1:first-child,
+.markdown-body h2:first-child,
+.markdown-body h3:first-child,
+.markdown-body h4:first-child {
+  margin-top: 0;
+}
+
+.markdown-body h1 {
+  font-size: 20px;
+}
+
+.markdown-body h2 {
+  font-size: 17px;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.25);
+}
+
+.markdown-body h3 {
+  font-size: 15px;
+}
+
+.markdown-body h4 {
+  font-size: 14px;
+}
+
+.markdown-body p {
+  margin: 0 0 0.75em;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.6em;
+}
+
+.markdown-body ul {
+  list-style: disc;
+}
+
+.markdown-body ol {
+  list-style: decimal;
+}
+
+.markdown-body ul ul {
+  list-style: circle;
+}
+
+.markdown-body li {
+  margin: 0.2em 0;
+}
+
+.markdown-body li > p {
+  margin: 0;
+}
+
+.markdown-body blockquote {
+  margin: 0.75em 0;
+  padding: 0.2em 0.9em;
+  border-left: 3px solid rgba(127, 127, 127, 0.4);
+  opacity: 0.85;
+}
+
+.markdown-body hr {
+  margin: 1.2em 0;
+  border: 0;
+  border-top: 1px solid rgba(127, 127, 127, 0.3);
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.markdown-body th {
+  font-weight: 600;
+  background: rgba(127, 127, 127, 0.1);
+}
+
+/* 未装 react-syntax-highlighter 且本机无 npm，只做排版不做语法高亮。
+   底色用半透明中灰，antd 亮色与暗色主题下都成立。 */
+.markdown-body pre {
+  margin: 0.75em 0;
+  padding: 12px 14px;
+  background: rgba(127, 127, 127, 0.12);
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.markdown-body pre:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  font-size: inherit;
+  white-space: pre;
+}
+
+.markdown-body code {
+  padding: 0.15em 0.4em;
+  background: rgba(127, 127, 127, 0.15);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.92em;
+}
+
+.markdown-body a {
+  color: #1677ff;
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+}

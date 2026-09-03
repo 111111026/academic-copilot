@@ -2,6 +2,9 @@
 
 import { Layout, Menu } from 'antd';
 import {
+  CodeOutlined,
+  CommentOutlined,
+  EditOutlined,
   FileTextOutlined,
   ReadOutlined,
   SearchOutlined,
@@ -23,6 +26,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
     { key: '/workspace', icon: <ReadOutlined />, label: <Link href="/workspace">文献工作台</Link> },
     { key: '/search', icon: <SearchOutlined />, label: <Link href="/search">文献检索</Link> },
     { key: '/compare', icon: <SwapOutlined />, label: <Link href="/compare">文献对比</Link> },
+    { key: '/writing', icon: <EditOutlined />, label: <Link href="/writing">写作助手</Link> },
+    { key: '/code', icon: <CodeOutlined />, label: <Link href="/code">数据与代码</Link> },
+    { key: '/mentor', icon: <CommentOutlined />, label: <Link href="/mentor">导师沟通</Link> },
     { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">设置</Link> },
   ];
 
@@ -52,7 +58,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           items={items}
         />
         <div style={{ position: 'absolute', bottom: 12, left: 16, right: 16, fontSize: 12, opacity: 0.5 }}>
-          MVP v0.1.0 · 数据仅存本地
+          MVP v0.3.0 · 数据仅存本地
         </div>
       </Sider>
       <Layout>
