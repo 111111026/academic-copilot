@@ -2,6 +2,7 @@
 
 import { Layout, Menu } from 'antd';
 import {
+  EditOutlined,
   FileTextOutlined,
   ReadOutlined,
   SearchOutlined,
@@ -23,6 +24,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     { key: '/workspace', icon: <ReadOutlined />, label: <Link href="/workspace">文献工作台</Link> },
     { key: '/search', icon: <SearchOutlined />, label: <Link href="/search">文献检索</Link> },
     { key: '/compare', icon: <SwapOutlined />, label: <Link href="/compare">文献对比</Link> },
+    { key: '/writing', icon: <EditOutlined />, label: <Link href="/writing">写作助手</Link> },
     { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">设置</Link> },
   ];
 
