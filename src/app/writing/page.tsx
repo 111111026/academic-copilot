@@ -26,15 +26,15 @@ import Markdown from 'react-markdown';
 import { useLiveQuery } from 'dexie-react-hooks';
 import AppShell from '@/components/AppShell';
 import { db } from '@/lib/db';
-import { chat } from '@/lib/llm';
 import { useSettings } from '@/lib/settings';
+import { usePromptTool } from '@/hooks/usePromptTool';
+import { copyText } from '@/lib/clipboard';
+import { MAX_INPUT_CHARS } from '@/lib/prompt';
 import {
   DEFAULT_POLISH_STYLE,
-  MAX_INPUT_CHARS,
   WRITING_TEMPERATURE,
   buildReferenceList,
   buildWritingRequest,
-  copyText,
   detectLanguage,
   resolveDirection,
 } from '@/lib/writing';
@@ -50,9 +50,12 @@ const MODE_LABEL: Record<WritingMode, string> = {
   references: '参考文献格式化',
 };
 
-const MODE_OPTIONS: { label: string; value: WritingMode }[] = (
-  Object.keys(MODE_LABEL) as WritingMode[]
-).map((value) => ({ value, label: MODE_LABEL[value] }));
+const WRITING_MODES = Object.keys(MODE_LABEL) as WritingMode[];
+
+const MODE_OPTIONS: { label: string; value: WritingMode }[] = WRITING_MODES.map((value) => ({
+  value,
+  label: MODE_LABEL[value],
+}));
 
 /** 大纲和参考文献格式化的输出本身就是 Markdown 结构，其余四种是连续散文，按原样换行更好复制 */
 const MARKDOWN_MODES: WritingMode[] = ['outline', 'references'];
@@ -129,7 +132,6 @@ export default function WritingPage() {
   const llm = useSettings((s) => s.settings.llm);
   const papers = useMemo(() => papersQuery ?? [], [papersQuery]);
 
-  const [mode, setMode] = useState<WritingMode>('polish');
   const [text, setText] = useState('');
   const [style, setStyle] = useState(DEFAULT_POLISH_STYLE);
   const [ratio, setRatio] = useState(2);
@@ -140,22 +142,10 @@ export default function WritingPage() {
   const [format, setFormat] = useState(FORMAT_OPTIONS[0].value);
   const [references, setReferences] = useState('');
   const [refIds, setRefIds] = useState<string[]>([]);
-
-  // 每种模式各存一份结果，切走再切回来不会丢掉上一次的输出
-  const [results, setResults] = useState<Record<WritingMode, string>>({
-    polish: '',
-    rewrite: '',
-    outline: '',
-    expand: '',
-    translate: '',
-    references: '',
-  });
-  const [activeGen, setActiveGen] = useState<WritingMode | null>(null);
-  const [error, setError] = useState('');
   const [messageApi, contextHolder] = message.useMessage();
 
-  const generating = activeGen !== null;
-  const result = results[mode];
+  const tool = usePromptTool(WRITING_MODES, llm);
+  const { mode, setMode, result, activeGen, generating, error } = tool;
   const isMarkdown = MARKDOWN_MODES.includes(mode);
 
   const hasInput =
@@ -169,14 +159,8 @@ export default function WritingPage() {
 
   const generate = async () => {
     if (!canGenerate) return;
-    // 生成过程中切到别的模式，增量仍写回发起时那个模式的槽位
-    const target = mode;
-    const previous = results[target];
-    setActiveGen(target);
-    setError('');
-    setResults((prev) => ({ ...prev, [target]: '' }));
-    try {
-      const request = buildWritingRequest(target, {
+    const full = await tool.run(
+      buildWritingRequest(mode, {
         text,
         style,
         ratio,
@@ -186,25 +170,10 @@ export default function WritingPage() {
         requirements,
         format,
         references,
-      });
-      const full = await chat(llm, {
-        messages: [
-          { role: 'system', content: request.system },
-          { role: 'user', content: request.user },
-        ],
-        temperature: WRITING_TEMPERATURE[target],
-        onDelta: (delta) =>
-          setResults((prev) => ({ ...prev, [target]: prev[target] + delta })),
-      });
-      setResults((prev) => ({ ...prev, [target]: full }));
-      messageApi.success(`${MODE_LABEL[target]}完成`);
-    } catch (e) {
-      setError((e as Error).message);
-      // 结果不落库，失败时若沿用清空后的空槽，上一次的成功输出会连带丢失
-      setResults((prev) => ({ ...prev, [target]: previous }));
-    } finally {
-      setActiveGen(null);
-    }
+      }),
+      WRITING_TEMPERATURE[mode],
+    );
+    if (full !== null) messageApi.success(`${MODE_LABEL[mode]}完成`);
   };
 
   const onCopy = async () => {
@@ -408,10 +377,7 @@ export default function WritingPage() {
       <Segmented<WritingMode>
         options={MODE_OPTIONS}
         value={mode}
-        onChange={(v) => {
-          setMode(v);
-          setError('');
-        }}
+        onChange={setMode}
         style={{ marginBottom: 16 }}
       />
 
