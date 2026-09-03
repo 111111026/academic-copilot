@@ -174,7 +174,7 @@ export default function ComparePage() {
       dataIndex: 'title',
       key: 'title',
       render: (title: string, record: Paper) => (
-        <Link href={`/workspace/${record.id}`}>{title}</Link>
+        <Link href={`/workspace/paper?id=${record.id}`}>{title}</Link>
       ),
     },
     {

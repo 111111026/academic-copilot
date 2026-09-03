@@ -89,7 +89,7 @@ export default function WorkspacePage() {
       dataIndex: 'title',
       key: 'title',
       render: (title: string, record: Paper) => (
-        <Link href={`/workspace/${record.id}`}>{title}</Link>
+        <Link href={`/workspace/paper?id=${record.id}`}>{title}</Link>
       ),
     },
     {
@@ -123,7 +123,7 @@ export default function WorkspacePage() {
       render: (_: unknown, record: Paper) => (
         <Space>
           <Tooltip title="阅读">
-            <Link href={`/workspace/${record.id}`}>
+            <Link href={`/workspace/paper?id=${record.id}`}>
               <Button size="small" icon={<ReadOutlined />} />
             </Link>
           </Tooltip>

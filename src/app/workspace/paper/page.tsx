@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import {
   Card,
   Typography,
@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import { ThunderboltOutlined, SendOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Markdown from 'react-markdown';
 import { useLiveQuery } from 'dexie-react-hooks';
 import AppShell from '@/components/AppShell';
@@ -29,8 +30,15 @@ interface QaTurn {
   answer: string;
 }
 
-export default function PaperDetailPage({ params }: { params: { id: string } }) {
-  const paper = useLiveQuery(() => db.papers.get(params.id), [params.id]);
+function PaperDetailBody() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
+  // undefined = 查询还没落地，null = 确实没有这篇文献。
+  // 两者都返回 undefined 的话，坏 ID 会永远停在加载态转圈
+  const paper = useLiveQuery(
+    async () => (id ? ((await db.papers.get(id)) ?? null) : null),
+    [id],
+  );
   const llm = useSettings((s) => s.settings.llm);
 
   const [summary, setSummary] = useState('');
@@ -109,7 +117,26 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
     }
   };
 
-  if (!paper) {
+  if (!id || paper === null) {
+    return (
+      <AppShell>
+        <Alert
+          type="error"
+          title={id ? '文献不存在' : '缺少文献 ID'}
+          description={
+            id ? `本地文献库里找不到 ID 为「${id}」的文献。` : '请从文献工作台重新进入。'
+          }
+        />
+        <Link href="/workspace">
+          <Button type="link" icon={<ArrowLeftOutlined />} style={{ marginTop: 12 }}>
+            返回文献工作台
+          </Button>
+        </Link>
+      </AppShell>
+    );
+  }
+
+  if (paper === undefined) {
     return (
       <AppShell>
         <Spin tip="加载中..." size="large" style={{ marginTop: 120 }} />
@@ -218,5 +245,19 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
         </Typography.Text>
       </Card>
     </AppShell>
+  );
+}
+
+export default function PaperDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <Spin size="large" style={{ display: 'block', margin: '120px auto' }} />
+        </AppShell>
+      }
+    >
+      <PaperDetailBody />
+    </Suspense>
   );
 }
