@@ -165,10 +165,10 @@ export default function SkillCreatorPage() {
         创建自定义 Skill
       </Typography.Title>
 
-      {error && <Alert type="error" message={error} closable style={{ marginBottom: 16 }} onClose={() => setError('')} />}
+      {error && <Alert type="error" title={error} closable={{ onClose: () => setError('') }} style={{ marginBottom: 16 }} />}
 
       <Card size="small" title="基本信息" style={{ marginBottom: 16 }}>
-        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={12}>
           <div>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>名称 *</Typography.Text>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：论文审稿意见回复" maxLength={50} />
@@ -246,7 +246,7 @@ export default function SkillCreatorPage() {
             title={<span>步骤 {idx + 1} · <Typography.Text code style={{ fontSize: 12 }}>{step.id}</Typography.Text></span>}
             extra={<Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => setSteps(steps.filter((_, i) => i !== idx))} disabled={steps.length <= 1} />}
           >
-            <Space direction="vertical" style={{ width: '100%' }} size={8}>
+            <Space orientation="vertical" style={{ width: '100%' }} size={8}>
               <Input
                 value={step.name}
                 onChange={(e) => { const next = [...steps]; next[idx] = { ...step, name: e.target.value }; setSteps(next); }}

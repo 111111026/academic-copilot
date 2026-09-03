@@ -227,7 +227,7 @@ export default function WritingPage() {
           <Alert
             type="info"
             showIcon
-            message="降重只改变表达方式，不改变观点归属"
+            title="降重只改变表达方式，不改变观点归属"
             description="引用他人成果仍须按规范标注出处。改写结果请逐句核对，确认没有歪曲原意。"
           />
         </>
@@ -365,7 +365,7 @@ export default function WritingPage() {
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
-          message="尚未配置 API Key"
+          title="尚未配置 API Key"
           description={
             <>
               写作助手需要调用大模型，请先到 <Link href="/settings">设置</Link> 填写你的 API Key。
@@ -420,7 +420,7 @@ export default function WritingPage() {
         }
       >
         {error && (
-          <Alert type="error" showIcon closable message={error} style={{ marginBottom: 12 }} />
+          <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />
         )}
 
         {activeGen === mode && !result && (

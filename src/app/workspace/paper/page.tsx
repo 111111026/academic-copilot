@@ -139,7 +139,7 @@ function PaperDetailBody() {
   if (paper === undefined) {
     return (
       <AppShell>
-        <Spin tip="加载中..." size="large" style={{ marginTop: 120 }} />
+        <Spin description="加载中..." size="large" style={{ marginTop: 120 }} />
       </AppShell>
     );
   }
@@ -166,7 +166,7 @@ function PaperDetailBody() {
           type="error"
           showIcon
           closable
-          message={error}
+          title={error}
           style={{ marginBottom: 16 }}
         />
       )}
@@ -191,11 +191,11 @@ function PaperDetailBody() {
             type="warning"
             showIcon
             style={{ marginBottom: 12 }}
-            message="这篇文献只有题录与摘要，没有全文"
+            title="这篇文献只有题录与摘要，没有全文"
             description="检索导入的条目不含 PDF 全文，总结与问答仅基于摘要生成，深度有限。如需完整分析，请下载原文后到「文献工作台」上传。"
           />
         )}
-        {summarizing && !summary && <Spin tip="AI 正在阅读论文..." />}
+        {summarizing && !summary && <Spin description="AI 正在阅读论文..." />}
         {summary ? (
           <div className="markdown-body">
             <Markdown>{summary}</Markdown>

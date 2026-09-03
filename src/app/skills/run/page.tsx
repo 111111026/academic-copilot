@@ -295,7 +295,7 @@ function SkillRunBody() {
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
-          message="尚未配置 API Key"
+          title="尚未配置 API Key"
           description={
             <>
               Skill 执行需要调用大模型，请先到 <Link href="/settings">设置</Link> 填写。
@@ -366,7 +366,7 @@ function SkillRunBody() {
               style={{ marginBottom: 16 }}
             />
             <Steps
-              direction="vertical"
+              orientation="vertical"
               size="small"
               current={execution.currentStepIndex}
               items={execution.steps.map((s) => ({
@@ -376,7 +376,7 @@ function SkillRunBody() {
                   s.status === 'running' ? 'process' :
                   s.status === 'failed' ? 'error' :
                   s.status === 'skipped' ? 'finish' : 'wait',
-                description: s.duration ? `${(s.duration / 1000).toFixed(1)}s` : undefined,
+                content: s.duration ? `${(s.duration / 1000).toFixed(1)}s` : undefined,
               }))}
             />
           </Card>
@@ -414,7 +414,7 @@ function SkillRunBody() {
                       <Markdown>{s.output}</Markdown>
                     </div>
                   ) : s.error ? (
-                    <Alert type="error" message={s.error} />
+                    <Alert type="error" title={s.error} />
                   ) : (
                     <Typography.Text type="secondary">等待执行…</Typography.Text>
                   ),

@@ -174,7 +174,7 @@ export default function WorkspacePage() {
         </p>
       </Upload.Dragger>
 
-      {error && <Alert type="error" showIcon closable message={error} style={{ marginBottom: 16 }} />}
+      {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 16 }} />}
 
       <Input.Search
         placeholder="按标题或作者搜索..."

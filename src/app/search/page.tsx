@@ -230,7 +230,7 @@ export default function SearchPage() {
       dataIndex: 'title',
       key: 'title',
       render: (title: string, record: SearchResult) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           {record.url ? (
             <Typography.Link href={record.url} target="_blank" rel="noreferrer">
               {title}
@@ -362,7 +362,7 @@ export default function SearchPage() {
   );
 
   const manualPanel = (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
       <Card size="small" title="粘贴 BibTeX 批量导入">
         <Input.TextArea
           rows={6}
@@ -461,7 +461,7 @@ export default function SearchPage() {
       />
 
       {error && (
-        <Alert type="error" showIcon closable message={error} style={{ marginBottom: 16 }} />
+        <Alert type="error" showIcon closable title={error} style={{ marginBottom: 16 }} />
       )}
 
       {mode === 'manual' ? manualPanel : onlinePanel}
