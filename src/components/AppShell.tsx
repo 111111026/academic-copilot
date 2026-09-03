@@ -64,7 +64,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           items={items}
         />
         <div style={{ position: 'absolute', bottom: 12, left: 16, right: 16, fontSize: 12, opacity: 0.5 }}>
-          MVP v0.3.0 · 数据仅存本地
+          MVP v0.4.0 · 数据仅存本地
         </div>
       </Sider>
       <Layout>

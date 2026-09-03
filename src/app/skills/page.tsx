@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, Col, Row, Tag, Typography, Segmented, Empty } from 'antd';
-import { ThunderboltOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Tag, Typography, Segmented, Empty, Button, Space } from 'antd';
+import { ThunderboltOutlined, PlusOutlined, HistoryOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import { BUILTIN_SKILLS } from '@/config/skills';
@@ -40,6 +40,15 @@ export default function SkillsPage() {
       <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
         多步骤学术工作流：填写输入 → 逐步执行 → 每步结果可独立查看与导出。不是单次问答，而是完整的任务链。
       </Typography.Paragraph>
+
+      <Space style={{ marginBottom: 16 }}>
+        <Link href="/skills/create">
+          <Button icon={<PlusOutlined />}>创建自定义 Skill</Button>
+        </Link>
+        <Link href="/skills/history">
+          <Button icon={<HistoryOutlined />}>执行历史</Button>
+        </Link>
+      </Space>
 
       <Segmented<Filter>
         options={[
