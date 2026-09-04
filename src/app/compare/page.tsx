@@ -174,7 +174,7 @@ export default function ComparePage() {
       dataIndex: 'title',
       key: 'title',
       render: (title: string, record: Paper) => (
-        <Link href={`/workspace/${record.id}`}>{title}</Link>
+        <Link href={`/workspace/paper?id=${record.id}`}>{title}</Link>
       ),
     },
     {
@@ -243,7 +243,7 @@ export default function ComparePage() {
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
-          message="尚未配置 API Key"
+          title="尚未配置 API Key"
           description={
             <>
               文献对比需要调用大模型，请先到 <Link href="/settings">设置</Link> 填写你的 API Key。
@@ -306,7 +306,7 @@ export default function ComparePage() {
               type="info"
               showIcon
               style={{ marginBottom: 16 }}
-              message={`所选文献中有 ${weakCount} 篇只有题录与摘要`}
+              title={`所选文献中有 ${weakCount} 篇只有题录与摘要`}
               description="这些条目没有全文，对比只能基于摘要，方法与局限等维度可能标为「未提及」。"
             />
           )}
@@ -350,14 +350,14 @@ export default function ComparePage() {
             }
           >
             {error && (
-              <Alert type="error" showIcon closable message={error} style={{ marginBottom: 12 }} />
+              <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />
             )}
             {pinned && (
               <Alert
                 type="info"
                 showIcon
                 style={{ marginBottom: 12 }}
-                message={`正在查看 ${new Date(pinned.createdAt).toLocaleString('zh-CN')} 生成的对比（${pinned.titles.length} 篇）`}
+                title={`正在查看 ${new Date(pinned.createdAt).toLocaleString('zh-CN')} 生成的对比（${pinned.titles.length} 篇）`}
                 description="勾选文献或重新生成会离开这条历史记录。"
               />
             )}

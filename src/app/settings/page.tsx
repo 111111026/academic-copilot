@@ -119,7 +119,7 @@ export default function SettingsPage() {
         style={{ marginTop: 24 }}
         type="info"
         showIcon
-        message="隐私说明"
+        title="隐私说明"
         description="本应用为纯前端应用，无后端服务器。你的 API Key 和所有文献数据都只保存在本机浏览器中，不会上传到任何第三方（除你自己配置的 LLM API）。"
       />
     </AppShell>

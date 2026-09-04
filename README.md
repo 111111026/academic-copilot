@@ -1,36 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 研途智伴 Academic Copilot
 
-## Getting Started
+面向研究生的 AI 学术工具：文献阅读、检索、对比、写作辅助、数据与代码、导师沟通，以及可自定义的多步 Skills。
 
-First, run the development server:
+**纯前端应用，没有后端服务器。** 你自带 LLM API Key，浏览器直连服务商；所有文献、笔记、执行记录只存在你自己的浏览器里，不经过任何第三方存储。
+
+---
+
+## 为什么是纯前端
+
+同类工具的常见形态是「平台代持 Key + 服务端中转」，代价是平台要为每个用户垫付 token 费用，用户的文献也要上传到别人的服务器。这个项目把两件事都交还给用户：
+
+- **零平台成本** —— 没有服务端，部署一份静态文件即可，token 费用直接结给你的服务商。
+- **数据不出本机** —— 文献全文、分块、笔记、对比结果全部落在浏览器 IndexedDB，清掉站点数据就等于彻底删除。
+
+代价也需要说清楚：Key 存在浏览器本地（见下文[数据与隐私](#数据与隐私)），并且换浏览器或换设备不会自动同步。
+
+## 功能
+
+| 模块 | 路由 | 说明 |
+| --- | --- | --- |
+| 文献工作台 | `/workspace`、`/workspace/paper` | 上传 PDF 时抽取全文、分块并自动补全题录信息；详情页可一键总结、或就这篇文献问答（问答走本地检索增强，只把命中的段落发给模型，不上传全文） |
+| 文献检索 | `/search` | 走 OpenAlex 开放接口检索学术文献，也可粘贴 BibTeX 批量导入题录 |
+| 文献对比 | `/compare` | 选多篇文献按六个维度生成对比矩阵（研究问题、研究方法、数据集/样本、主要结论、创新点、局限性），结果可保存回看 |
+| 写作助手 | `/writing` | 润色、降重改写、大纲生成、段落扩写、学术中英互译、参考文献格式化 |
+| 数据与代码 | `/code` | 统计方法推荐、结果解读、代码生成与调试 |
+| 导师沟通 | `/mentor` | 邮件起草、汇报提纲、模拟答辩提问 |
+| Skills 中心 | `/skills`、`/skills/run`、`/skills/create`、`/skills/history` | 多步编排的工作流，5 个内置 Skill，也可自建；每次执行都留档，可导出 Markdown |
+| 设置 | `/settings` | 服务商预设、baseUrl / 模型 / temperature / max tokens，深浅色主题 |
+
+内置 Skills：
+
+- **开题报告生成器** —— 选题背景 → 文献综述框架 → 研究方案 → 进度安排（4 步）
+- **文献综述工作流** —— 逐篇总结 → 主题聚类 → 系统性综述框架（3 步）
+- **论文精读器** —— 结构分析 → 批判性评价 → 阅读笔记（3 步）
+- **实验设计顾问** —— 变量设计 → 样本量估算 → 统计方法选择（3 步）
+- **组会 PPT 生成** —— 逐页大纲 + 讲稿（2 步）
+
+自定义 Skill 的每一步都能声明输入来源（用户填写 / 上一步产出 / 固定常量）和自己的提示词模板，标记为可选的步骤可以整步跳过。执行时逐步流式输出；某一步失败会中断后续步骤，但已完成的产出会保留下来并连同失败原因一起存档。
+
+## 技术栈
+
+- **Next.js 14**（App Router）+ **TypeScript** + **React 18**
+- **antd 6** UI，`@ant-design/nextjs-registry` 处理 SSR 样式注入
+- **Dexie**（IndexedDB 封装）持久化文献与执行记录，**Zustand** 管设置
+- **pdfjs-dist** 在浏览器内解析 PDF，**react-markdown** 渲染模型输出
+- 提示词模板集中在 `src/config/prompts.ts`（17 个）与 `src/config/skills.ts`
+
+## 本地开发
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+其他脚本：`npm run build`（构建静态站点）、`npm run lint`。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> 这个项目配置了 `output: 'export'`，**没有 `npm start`**——导出产物是纯静态文件，不含 Node 服务端，用任意静态服务器托管即可。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+首次使用请到「设置」页填入服务商 API Key。DeepSeek、OpenAI、Moonshot 有预设，任何 OpenAI 兼容接口都能通过「自定义」接入（baseUrl 通常以 `/v1` 结尾）。
 
-## Learn More
+## 部署（静态导出）
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+产物在 `out/`，把它整个丢给 nginx、Caddy、Apache、GitHub Pages 或任意对象存储静态托管都能跑，无需任何服务端运行时。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```nginx
+server {
+    root /var/www/academic-copilot/out;
+    index index.html;
+}
+```
 
-## Deploy on Vercel
+两个配置细节：
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **`output: 'export'`** —— 全部页面在构建期预渲染。因此项目里没有任何服务端能力（无 API Route、无 middleware、无 `next/headers`），LLM 请求由浏览器直接发出。
+- **`trailingSlash: true`** —— 默认导出会得到 `out/skills/run.html`，而通用静态服务器**不会**把 `/skills/run` 自动映射到同名 `.html`，直接访问或刷新就是 404。开启后产出 `out/skills/run/index.html`，任何静态服务器都能正确解析，代价是 URL 带尾斜杠。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+同理，运行时才知道的 ID（文献的 uuid、自定义 Skill 的 id）无法在构建期枚举，所以详情页统一用查询参数而非路径参数：`/workspace/paper?id=…`、`/skills/run?id=…&exec=…`。
+
+## 数据与隐私
+
+| 数据 | 位置 | 清除方式 |
+| --- | --- | --- |
+| 文献、PDF 全文与分块、对比记录、Skill 执行记录、自定义 Skill | IndexedDB，库名 `academic-copilot` | 浏览器「清除站点数据」，或在应用内逐条删除 |
+| 设置（含 **API Key**）、主题 | localStorage，键名 `ac-settings` | 设置页清空，或浏览器「清除站点数据」 |
+| LLM 请求内容 | 不落地，直接从浏览器发往你配置的服务商 | —— |
+
+**需要如实说明的风险：**
+
+1. **API Key 以明文存在 localStorage。** 任何能在本站点执行 JavaScript 的东西都读得到它。本项目不加载第三方脚本、不做埋点，但如果你往页面里注入了来路不明的浏览器扩展或脚本，Key 就等于泄露。想彻底规避只能上服务端代理——那是本项目刻意不做的架构。建议为这个用途单独申请一个限额 Key。
+2. **PDF 全文存在 IndexedDB，未加密。** 共用电脑请用浏览器的访客模式，或用完手动清除站点数据。
+3. **发给 LLM 的内容就是发给了服务商。** 未发表的实验数据、涉密课题请先确认服务商的数据政策再使用。
+4. **换浏览器、换设备、清缓存都会让数据消失**，没有云端备份。重要的 Skill 产出请用页面上的「导出 Markdown」自行留存。
+
+## 学术诚信
+
+所有 AI 生成内容仅供辅助。请在提交前核实每一条事实、数据和引文——模型会编造看起来可信的参考文献和不存在的实验结果，「降重改写」也不等于规避学术不端。最终署你名字的东西，责任在你。
+
+应用内每个页面顶部都固定显示这句提示，不是装饰。

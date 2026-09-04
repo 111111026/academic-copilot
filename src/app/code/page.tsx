@@ -247,7 +247,7 @@ export default function CodePage() {
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
-          message="尚未配置 API Key"
+          title="尚未配置 API Key"
           description={
             <>
               数据与代码助手需要调用大模型，请先到 <Link href="/settings">设置</Link> 填写你的 API Key。
@@ -317,7 +317,7 @@ export default function CodePage() {
         }
       >
         {error && (
-          <Alert type="error" showIcon closable message={error} style={{ marginBottom: 12 }} />
+          <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />
         )}
 
         {activeGen === mode && !result && (
