@@ -83,7 +83,7 @@ export default function HistoryPage() {
       width: 140,
       render: (_: unknown, r: SkillExecution) => (
         <Space size="small">
-          <Link href={`/skills/${r.skillId}?exec=${r.id}`}>
+          <Link href={`/skills/run?id=${r.skillId}&exec=${r.id}`}>
             <Button size="small" type="text" icon={<EyeOutlined />}>
               查看
             </Button>

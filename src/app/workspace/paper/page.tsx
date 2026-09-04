@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import {
   Card,
   Typography,
@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import { ThunderboltOutlined, SendOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Markdown from 'react-markdown';
 import { useLiveQuery } from 'dexie-react-hooks';
 import AppShell from '@/components/AppShell';
@@ -29,8 +30,15 @@ interface QaTurn {
   answer: string;
 }
 
-export default function PaperDetailPage({ params }: { params: { id: string } }) {
-  const paper = useLiveQuery(() => db.papers.get(params.id), [params.id]);
+function PaperDetailBody() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
+  // undefined = 查询还没落地，null = 确实没有这篇文献。
+  // 两者都返回 undefined 的话，坏 ID 会永远停在加载态转圈
+  const paper = useLiveQuery(
+    async () => (id ? ((await db.papers.get(id)) ?? null) : null),
+    [id],
+  );
   const llm = useSettings((s) => s.settings.llm);
 
   const [summary, setSummary] = useState('');
@@ -109,10 +117,29 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
     }
   };
 
-  if (!paper) {
+  if (!id || paper === null) {
     return (
       <AppShell>
-        <Spin tip="加载中..." size="large" style={{ marginTop: 120 }} />
+        <Alert
+          type="error"
+          title={id ? '文献不存在' : '缺少文献 ID'}
+          description={
+            id ? `本地文献库里找不到 ID 为「${id}」的文献。` : '请从文献工作台重新进入。'
+          }
+        />
+        <Link href="/workspace">
+          <Button type="link" icon={<ArrowLeftOutlined />} style={{ marginTop: 12 }}>
+            返回文献工作台
+          </Button>
+        </Link>
+      </AppShell>
+    );
+  }
+
+  if (paper === undefined) {
+    return (
+      <AppShell>
+        <Spin description="加载中..." size="large" style={{ marginTop: 120 }} />
       </AppShell>
     );
   }
@@ -139,7 +166,7 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
           type="error"
           showIcon
           closable
-          message={error}
+          title={error}
           style={{ marginBottom: 16 }}
         />
       )}
@@ -164,11 +191,11 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
             type="warning"
             showIcon
             style={{ marginBottom: 12 }}
-            message="这篇文献只有题录与摘要，没有全文"
+            title="这篇文献只有题录与摘要，没有全文"
             description="检索导入的条目不含 PDF 全文，总结与问答仅基于摘要生成，深度有限。如需完整分析，请下载原文后到「文献工作台」上传。"
           />
         )}
-        {summarizing && !summary && <Spin tip="AI 正在阅读论文..." />}
+        {summarizing && !summary && <Spin description="AI 正在阅读论文..." />}
         {summary ? (
           <div className="markdown-body">
             <Markdown>{summary}</Markdown>
@@ -218,5 +245,19 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
         </Typography.Text>
       </Card>
     </AppShell>
+  );
+}
+
+export default function PaperDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <Spin size="large" style={{ display: 'block', margin: '120px auto' }} />
+        </AppShell>
+      }
+    >
+      <PaperDetailBody />
+    </Suspense>
   );
 }

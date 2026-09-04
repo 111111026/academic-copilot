@@ -67,7 +67,7 @@ export default function SkillsPage() {
         <Row gutter={[16, 16]}>
           {shown.map((skill) => (
             <Col key={skill.id} xs={24} sm={12} lg={8}>
-              <Link href={`/skills/${skill.id}`}>
+              <Link href={`/skills/run?id=${skill.id}`}>
                 <Card
                   hoverable
                   size="small"

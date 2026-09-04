@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Alert,
   Button,
@@ -39,9 +39,9 @@ import type { Skill, SkillInput } from '@/types/skill';
 import type { SkillExecution } from '@/types/execution';
 
 function SkillRunBody() {
-  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const execParam = searchParams.get('exec');
   const llm = useSettings((s) => s.settings.llm);
   const [messageApi, contextHolder] = message.useMessage();
@@ -50,10 +50,16 @@ function SkillRunBody() {
   const [loading, setLoading] = useState(true);
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [execution, setExecution] = useState<SkillExecution | null>(null);
+  const [execLoading, setExecLoading] = useState(!!execParam);
   const [running, setRunning] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    if (!id) {
+      setSkill(null);
+      setLoading(false);
+      return;
+    }
     const builtin = getBuiltinSkill(id);
     if (builtin) {
       setSkill(builtin);
@@ -81,10 +87,13 @@ function SkillRunBody() {
 
   useEffect(() => {
     if (!execParam) return;
+    setExecLoading(true);
     db.skillExecutions.get(execParam).then((row) => {
-      if (!row) return;
-      setExecution(row);
-      setInputs(row.userInputs);
+      if (row) {
+        setExecution(row);
+        setInputs(row.userInputs);
+      }
+      setExecLoading(false);
     });
   }, [execParam]);
 
@@ -177,13 +186,15 @@ function SkillRunBody() {
   };
 
   const exportMd = () => {
-    if (!skill || !execution) return;
-    const lines: string[] = [`# ${skill.name}`, ''];
+    if (!execution) return;
+    // 用执行记录里的 skillName：Skill 定义被删了也还能导出
+    const name = execution.skillName;
+    const lines: string[] = [`# ${name}`, ''];
     for (const step of execution.steps) {
       if (step.status === 'skipped') continue;
       lines.push(`## ${step.stepName}`, '', step.output, '');
     }
-    downloadTextFile(`${skill.name}_${localDateStamp()}.md`, lines.join('\n'), 'text/markdown');
+    downloadTextFile(`${name}_${localDateStamp()}.md`, lines.join('\n'), 'text/markdown');
     messageApi.success('已导出 Markdown');
   };
 
@@ -194,7 +205,9 @@ function SkillRunBody() {
     router.push('/skills');
   };
 
-  if (loading) {
+  // Skill 定义找不到时执行记录是唯一的真相来源，得等它落地再决定渲染哪种视图，
+  // 否则会先闪一下「Skill 不存在」再切到回看
+  if (loading || (!skill && execLoading)) {
     return (
       <AppShell>
         <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />
@@ -202,10 +215,14 @@ function SkillRunBody() {
     );
   }
 
-  if (!skill) {
+  if (!skill && !execution) {
     return (
       <AppShell>
-        <Alert type="error" message="Skill 不存在" description={`找不到 ID 为「${id}」的 Skill。`} />
+        <Alert
+          type="error"
+          title={id ? 'Skill 不存在' : '缺少 Skill ID'}
+          description={id ? `找不到 ID 为「${id}」的 Skill。` : '请从 Skills 中心选择一个 Skill 进入。'}
+        />
         <Link href="/skills">
           <Button type="link" icon={<ArrowLeftOutlined />} style={{ marginTop: 12 }}>
             返回 Skills 中心
@@ -216,7 +233,7 @@ function SkillRunBody() {
   }
 
   const completedSteps = execution?.steps.filter((s) => s.status === 'completed').length ?? 0;
-  const totalSteps = skill.steps.length;
+  const totalSteps = skill?.steps.length ?? execution?.steps.length ?? 0;
   // 中断的执行里最后一步往往根本没跑，展开它只会看到「等待执行…」，
   // 所以退而求其次找最后一个真的产出过内容或报错的步骤
   const openStepKey =
@@ -240,13 +257,15 @@ function SkillRunBody() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div>
           <Typography.Title level={3} style={{ marginBottom: 4 }}>
-            {skill.icon} {skill.name}
+            {skill ? `${skill.icon} ${skill.name}` : execution?.skillName}
           </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-            {skill.description}
-          </Typography.Paragraph>
+          {skill && (
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+              {skill.description}
+            </Typography.Paragraph>
+          )}
         </div>
-        {!skill.isBuiltin && (
+        {skill && !skill.isBuiltin && (
           <Popconfirm
             title="删除这个自定义 Skill？"
             description="已有的执行历史会保留。"
@@ -261,12 +280,22 @@ function SkillRunBody() {
         )}
       </div>
 
-      {!llm.apiKey && (
+      {!skill && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title="该 Skill 已被删除"
+          description="执行记录自带每一步的名称与产出，所以下面的结果仍可回看和导出，但无法再次执行。"
+        />
+      )}
+
+      {skill && !llm.apiKey && (
         <Alert
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
-          message="尚未配置 API Key"
+          title="尚未配置 API Key"
           description={
             <>
               Skill 执行需要调用大模型，请先到 <Link href="/settings">设置</Link> 填写。
@@ -275,33 +304,35 @@ function SkillRunBody() {
         />
       )}
 
-      <Card size="small" title="输入" style={{ marginBottom: 16 }}>
-        {skill.inputs.map((inp) => (
-          <InputField
-            key={inp.id}
-            input={inp}
-            value={inputs[inp.id] ?? ''}
-            onChange={(v) => setInputs((prev) => ({ ...prev, [inp.id]: v }))}
-            disabled={running}
-          />
-        ))}
-        <Space style={{ marginTop: 12 }}>
-          <Button
-            type="primary"
-            icon={<CaretRightOutlined />}
-            onClick={handleRun}
-            disabled={!canRun}
-            loading={running && !execution}
-          >
-            {execution ? '重新执行' : '开始执行'}
-          </Button>
-          {running && (
-            <Button danger icon={<StopOutlined />} onClick={cancel}>
-              取消
+      {skill && (
+        <Card size="small" title="输入" style={{ marginBottom: 16 }}>
+          {skill.inputs.map((inp) => (
+            <InputField
+              key={inp.id}
+              input={inp}
+              value={inputs[inp.id] ?? ''}
+              onChange={(v) => setInputs((prev) => ({ ...prev, [inp.id]: v }))}
+              disabled={running}
+            />
+          ))}
+          <Space style={{ marginTop: 12 }}>
+            <Button
+              type="primary"
+              icon={<CaretRightOutlined />}
+              onClick={handleRun}
+              disabled={!canRun}
+              loading={running && !execution}
+            >
+              {execution ? '重新执行' : '开始执行'}
             </Button>
-          )}
-        </Space>
-      </Card>
+            {running && (
+              <Button danger icon={<StopOutlined />} onClick={cancel}>
+                取消
+              </Button>
+            )}
+          </Space>
+        </Card>
+      )}
 
       {execution && (
         <>
@@ -335,7 +366,7 @@ function SkillRunBody() {
               style={{ marginBottom: 16 }}
             />
             <Steps
-              direction="vertical"
+              orientation="vertical"
               size="small"
               current={execution.currentStepIndex}
               items={execution.steps.map((s) => ({
@@ -345,7 +376,7 @@ function SkillRunBody() {
                   s.status === 'running' ? 'process' :
                   s.status === 'failed' ? 'error' :
                   s.status === 'skipped' ? 'finish' : 'wait',
-                description: s.duration ? `${(s.duration / 1000).toFixed(1)}s` : undefined,
+                content: s.duration ? `${(s.duration / 1000).toFixed(1)}s` : undefined,
               }))}
             />
           </Card>
@@ -383,7 +414,7 @@ function SkillRunBody() {
                       <Markdown>{s.output}</Markdown>
                     </div>
                   ) : s.error ? (
-                    <Alert type="error" message={s.error} />
+                    <Alert type="error" title={s.error} />
                   ) : (
                     <Typography.Text type="secondary">等待执行…</Typography.Text>
                   ),
