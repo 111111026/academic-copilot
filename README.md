@@ -82,6 +82,8 @@ server {
 
 同理，运行时才知道的 ID（文献的 uuid、自定义 Skill 的 id）无法在构建期枚举，所以详情页统一用查询参数而非路径参数：`/workspace/paper?id=…`、`/skills/run?id=…&exec=…`。
 
+> **扩展方向**：当前为纯前端静态导出，如需 MCP 服务集成、后端 API 路由或更多扩展能力，可迁移到 Next.js 的 SSR / API Route 模式，或本地部署时接入 MCP 服务。
+
 ## 数据与隐私
 
 | 数据 | 位置 | 清除方式 |
