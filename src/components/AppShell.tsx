@@ -6,6 +6,7 @@ import {
   CommentOutlined,
   EditOutlined,
   FileTextOutlined,
+  ProjectOutlined,
   ReadOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -28,7 +29,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
     { key: '/search', icon: <SearchOutlined />, label: <Link href="/search">文献检索</Link> },
     { key: '/compare', icon: <SwapOutlined />, label: <Link href="/compare">文献对比</Link> },
     { key: '/writing', icon: <EditOutlined />, label: <Link href="/writing">写作助手</Link> },
-    { key: '/code', icon: <CodeOutlined />, label: <Link href="/code">数据与代码</Link> },
+    {
+      key: 'project-management',
+      icon: <ProjectOutlined />,
+      label: '课题/项目管理',
+      children: [{ key: '/code', icon: <CodeOutlined />, label: <Link href="/code">数据与代码</Link> }],
+    },
     { key: '/mentor', icon: <CommentOutlined />, label: <Link href="/mentor">导师沟通</Link> },
     { key: '/skills', icon: <ThunderboltOutlined />, label: <Link href="/skills">Skills 中心</Link> },
     { key: '/settings', icon: <SettingOutlined />, label: <Link href="/settings">设置</Link> },
@@ -61,6 +67,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           mode="inline"
           theme={darkMode ? 'dark' : 'light'}
           selectedKeys={[selected]}
+          defaultOpenKeys={pathname.startsWith('/code') ? ['project-management'] : undefined}
           items={items}
         />
         <div style={{ position: 'absolute', bottom: 12, left: 16, right: 16, fontSize: 12, opacity: 0.5 }}>
