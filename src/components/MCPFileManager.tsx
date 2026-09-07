@@ -1,9 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Modal, List, Tag, message, Spin, Alert } from 'antd';
-import { FolderOpenOutlined, ExportOutlined } from '@ant-design/icons';
+import { Button, Modal, List, Tag, message, Spin, Alert, Select } from 'antd';
+import { FolderOpenOutlined, ExportOutlined, ImportOutlined } from '@ant-design/icons';
 import { callTool } from '@/lib/mcp-client';
+import { buildPaperFromPdf } from '@/lib/pdf';
+import { savePaper } from '@/lib/db';
+import { chat } from '@/lib/llm';
+import { useSettings } from '@/lib/settings';
+import { PROMPTS } from '@/config/prompts';
+import type { Paper } from '@/types/paper';
 
 interface MCPFile {
   name: string;
@@ -17,6 +23,10 @@ export default function MCPFileManager() {
   const [files, setFiles] = useState<MCPFile[]>([]);
   const [currentPath, setCurrentPath] = useState('.');
   const [error, setError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'json' | 'bibtex' | 'markdown'>('json');
+
+  const llm = useSettings((s) => s.settings.llm);
 
   const loadDir = async (path: string) => {
     setLoading(true);
@@ -48,22 +58,110 @@ export default function MCPFileManager() {
       return;
     }
 
-    // 这里只是演示，实际导入需要调用文献工作台的 processFile 逻辑
-    message.info(`找到 ${pdfFiles.length} 个 PDF 文件，实际导入需要集成到文献工作台`);
-    console.log('PDF files to import:', pdfFiles);
+    setImporting(true);
+    setError('');
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const pdfFile of pdfFiles) {
+        try {
+          // 读取 PDF 文件内容（base64）
+          const readRes = await callTool('filesystem', 'read_file', { path: pdfFile.path });
+          const base64Content = readRes.content?.[0]?.text;
+
+          if (!base64Content) {
+            failCount++;
+            continue;
+          }
+
+          // 将 base64 转换为 File 对象
+          const binaryString = atob(base64Content);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const file = new File([bytes], pdfFile.name, { type: 'application/pdf' });
+
+          // 构建文献对象
+          const paper = await buildPaperFromPdf({ file });
+
+          // 尝试用 LLM 提取元数据
+          if (llm.apiKey && paper.fullText) {
+            try {
+              const reply = await chat(llm, {
+                messages: [
+                  { role: 'system', content: PROMPTS.extractTitle.systemPrompt },
+                  { role: 'user', content: paper.fullText.slice(0, 3000) },
+                ],
+                temperature: 0,
+                maxTokens: 300,
+              });
+              const cleaned = reply.trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '').trim();
+              const json = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] ?? cleaned);
+              paper.title = typeof json.title === 'string' && json.title.trim() ? json.title.trim() : paper.title;
+              paper.authors = Array.isArray(json.authors)
+                ? json.authors.filter((a: unknown): a is string => typeof a === 'string' && a.trim() !== '')
+                : paper.authors;
+              paper.year = typeof json.year === 'number' && Number.isFinite(json.year) ? json.year : paper.year;
+            } catch {
+              // LLM 提取失败，保留文件名
+            }
+          }
+
+          // 保存到数据库
+          await savePaper(paper);
+          successCount++;
+        } catch (err) {
+          console.error(`导入 ${pdfFile.name} 失败:`, err);
+          failCount++;
+        }
+      }
+
+      message.success(`导入完成：成功 ${successCount} 篇，失败 ${failCount} 篇`);
+      if (failCount > 0) {
+        setError(`${failCount} 个文件导入失败，可能是扫描版 PDF 或文件损坏`);
+      }
+    } finally {
+      setImporting(false);
+    }
   };
 
-  const exportNotes = async () => {
-    // 示例：导出文献笔记到本地文件
-    const notes = JSON.stringify({ exportDate: new Date().toISOString(), papers: [] }, null, 2);
+  const exportPapers = async () => {
+    // 从数据库获取所有文献
+    const { db } = await import('@/lib/db');
+    const papers = await db.papers.toArray();
+
+    if (papers.length === 0) {
+      message.warning('没有文献可导出');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await callTool('filesystem', 'write_file', {
-        path: 'exported-notes.json',
-        content: notes,
-      });
-      message.success('笔记已导出到 exported-notes.json');
+      let content: string;
+      let filename: string;
+
+      switch (exportFormat) {
+        case 'bibtex':
+          content = papers.map(paperToBibTeX).join('\n\n');
+          filename = 'papers.bib';
+          break;
+        case 'markdown':
+          content = papers.map(paperToMarkdown).join('\n\n---\n\n');
+          filename = 'papers.md';
+          break;
+        default:
+          content = JSON.stringify({ exportDate: new Date().toISOString(), papers }, null, 2);
+          filename = 'papers.json';
+      }
+
+      await callTool('filesystem', 'write_file', { path: filename, content });
+      message.success(`已导出 ${papers.length} 篇文献到 ${filename}`);
     } catch (err) {
       message.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -79,12 +177,27 @@ export default function MCPFileManager() {
         onCancel={() => setOpen(false)}
         width={700}
         footer={[
-          <Button key="export" icon={<ExportOutlined />} onClick={exportNotes}>
-            导出笔记
-          </Button>,
-          <Button key="import" type="primary" onClick={importPdfs}>
-            导入 PDF
-          </Button>,
+          <div key="actions" style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span>导出格式:</span>
+              <Select
+                value={exportFormat}
+                onChange={setExportFormat}
+                options={[
+                  { value: 'json', label: 'JSON' },
+                  { value: 'bibtex', label: 'BibTeX' },
+                  { value: 'markdown', label: 'Markdown' },
+                ]}
+                style={{ width: 120 }}
+              />
+              <Button icon={<ExportOutlined />} onClick={exportPapers} loading={loading}>
+                导出文献
+              </Button>
+            </div>
+            <Button type="primary" icon={<ImportOutlined />} onClick={importPdfs} loading={importing}>
+              导入 PDF ({files.filter((f) => f.type === 'file' && f.name.toLowerCase().endsWith('.pdf')).length})
+            </Button>
+          </div>,
         ]}
       >
         <Alert
@@ -94,7 +207,7 @@ export default function MCPFileManager() {
           style={{ marginBottom: 16 }}
         />
 
-        {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
+        {error && <Alert type="error" message={error} closable onClose={() => setError('')} style={{ marginBottom: 16 }} />}
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
@@ -109,6 +222,8 @@ export default function MCPFileManager() {
                     <Button key="open" size="small" onClick={() => loadDir(item.path)}>
                       打开
                     </Button>
+                  ) : item.name.toLowerCase().endsWith('.pdf') ? (
+                    <Tag color="red">PDF</Tag>
                   ) : null,
                 ]}
               >
@@ -130,4 +245,33 @@ export default function MCPFileManager() {
       </Modal>
     </>
   );
+}
+
+// ===== 导出格式转换 =====
+
+function paperToBibTeX(paper: Paper): string {
+  const key = (paper.authors[0]?.split(' ')[0] || 'unknown') + (paper.year || '') + (paper.title?.split(' ')[0] || '');
+  return `@article{${key},
+  title={${paper.title || 'Untitled'}},
+  author={${paper.authors.join(' and ')}},
+  year={${paper.year || 'unknown'}},
+  abstract={${paper.abstract || ''}}
+}`;
+}
+
+function paperToMarkdown(paper: Paper): string {
+  return `# ${paper.title || 'Untitled'}
+
+**作者**: ${paper.authors.join(', ') || '未知'}
+**年份**: ${paper.year || '未知'}
+**来源**: ${paper.source}
+
+## 摘要
+
+${paper.abstract || '无摘要'}
+
+## 全文
+
+${paper.fullText?.slice(0, 500) || '无内容'}...
+`;
 }
