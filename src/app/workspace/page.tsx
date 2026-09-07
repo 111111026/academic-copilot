@@ -18,6 +18,7 @@ import { InboxOutlined, DeleteOutlined, ReadOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import AppShell from '@/components/AppShell';
+import MCPFileManager from '@/components/MCPFileManager';
 import { db, deletePaper, savePaper } from '@/lib/db';
 import { buildPaperFromPdf } from '@/lib/pdf';
 import { chat } from '@/lib/llm';
@@ -176,12 +177,15 @@ export default function WorkspacePage() {
 
       {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 16 }} />}
 
-      <Input.Search
-        placeholder="按标题或作者搜索..."
-        allowClear
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ maxWidth: 360, marginBottom: 16 }}
-      />
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, alignItems: 'center' }}>
+        <Input.Search
+          placeholder="按标题或作者搜索..."
+          allowClear
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ maxWidth: 360 }}
+        />
+        <MCPFileManager />
+      </div>
 
       <Table<Paper>
         rowKey="id"
