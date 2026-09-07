@@ -107,3 +107,12 @@ export function retrieveContext(chunks: TextChunk[], query: string, topK = 6): s
   // 按原文顺序拼接，避免打乱论文叙述逻辑
   return join(picked.sort((a, b) => a.chunk.chunkIndex - b.chunk.chunkIndex).map((s) => s.chunk));
 }
+
+export function base64ToFile(base64: string, name: string): File {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new File([bytes], name, { type: 'application/pdf' });
+}

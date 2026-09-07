@@ -188,38 +188,6 @@ const routes = {
     if (!session || !session.ready) throw new Error(`MCP 服务 ${server} 未就绪`);
     return session.callTool(tool, args);
   },
-
-  'POST /api/llm/chat': async (body) => {
-    const { messages, model, baseUrl, apiKey } = body;
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, stream: false }),
-    });
-    if (!res.ok) throw new Error(`LLM 请求失败 (${res.status}): ${await res.text()}`);
-    return res.json();
-  },
-
-  'POST /api/llm/stream': async (body, res) => {
-    const { messages, model, baseUrl, apiKey } = body;
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    const upstream = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, stream: true }),
-    });
-    const reader = upstream.body.getReader();
-    const decoder = new TextDecoder();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        res.write(`data: ${decoder.decode(value, { stream: true })}\n\n`);
-      }
-      res.write('data: [DONE]\n\n');
-      res.end();
-    } catch (err) { res.write(`data: {"error":"${err.message}"}\n\n`); res.end(); }
-  },
 };
 
 // ===== HTTP 服务器 =====

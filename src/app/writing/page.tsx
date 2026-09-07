@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -23,9 +23,8 @@ import {
 } from '@ant-design/icons';
 import Link from 'next/link';
 import Markdown from 'react-markdown';
-import { useLiveQuery } from 'dexie-react-hooks';
 import AppShell from '@/components/AppShell';
-import { db } from '@/lib/db';
+import { usePapersByDate } from '@/lib/db';
 import { useSettings } from '@/lib/settings';
 import { usePromptTool } from '@/hooks/usePromptTool';
 import { copyText } from '@/lib/clipboard';
@@ -128,9 +127,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function WritingPage() {
-  const papersQuery = useLiveQuery(() => db.papers.orderBy('addedAt').reverse().toArray());
+  const papers = usePapersByDate();
   const llm = useSettings((s) => s.settings.llm);
-  const papers = useMemo(() => papersQuery ?? [], [papersQuery]);
 
   const [text, setText] = useState('');
   const [style, setStyle] = useState(DEFAULT_POLISH_STYLE);

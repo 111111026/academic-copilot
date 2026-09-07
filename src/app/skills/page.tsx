@@ -6,7 +6,7 @@ import { ThunderboltOutlined, PlusOutlined, HistoryOutlined } from '@ant-design/
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
 import { BUILTIN_SKILLS } from '@/config/skills';
-import { db } from '@/lib/db';
+import { getCustomSkills } from '@/lib/db';
 import type { Skill } from '@/types/skill';
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -25,7 +25,7 @@ export default function SkillsPage() {
   const [customSkills, setCustomSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
-    db.customSkills.toArray().then(setCustomSkills);
+    getCustomSkills().then(setCustomSkills);
   }, []);
 
   const all: Skill[] = [...BUILTIN_SKILLS, ...customSkills];

@@ -16,10 +16,9 @@ import {
   message,
 } from 'antd';
 import { CloudDownloadOutlined, ImportOutlined, SearchOutlined } from '@ant-design/icons';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import AppShell from '@/components/AppShell';
-import { db, savePaper } from '@/lib/db';
+import { savePaper, useAllPapers } from '@/lib/db';
 import { ARXIV_SOURCE_ID, searchOpenAlex } from '@/lib/openalex';
 import { parseBibtex, type ParsedReference } from '@/lib/bibtex';
 import type { Paper } from '@/types/paper';
@@ -77,7 +76,7 @@ export default function SearchPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [form] = Form.useForm<ManualForm>();
 
-  const existing = useLiveQuery(() => db.papers.toArray(), [], [] as Paper[]);
+  const existing = useAllPapers();
 
   // 检索结果与本地库按 DOI → URL → 标题依次比对，避免重复导入同一篇
   const importedKeys = useMemo(() => {

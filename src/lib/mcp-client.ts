@@ -58,62 +58,22 @@ export async function callTool(
   return res.json();
 }
 
-/** LLM 对话（非流式） */
-export async function llmChat(
-  messages: Array<{ role: string; content: string }>,
-  config: { model: string; baseUrl: string; apiKey: string },
-): Promise<{ choices: Array<{ message: { content: string } }> }> {
-  const res = await fetch(`${PROXY_BASE}/api/llm/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...config, messages }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`LLM 请求失败：${text}`);
-  }
-  return res.json();
+export interface MCPFile {
+  name: string;
+  type: 'file' | 'dir';
+  path: string;
 }
 
-/** LLM 流式对话（SSE） */
-export async function llmStream(
-  messages: Array<{ role: string; content: string }>,
-  config: { model: string; baseUrl: string; apiKey: string },
-  onChunk: (text: string) => void,
-): Promise<void> {
-  const res = await fetch(`${PROXY_BASE}/api/llm/stream`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...config, messages }),
-  });
-  if (!res.ok) throw new Error(`LLM 流式请求失败：${res.status}`);
-
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error('响应体为空');
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6);
-        if (data === '[DONE]') return;
-        try {
-          const json = JSON.parse(data);
-          const text = json.choices?.[0]?.delta?.content || '';
-          if (text) onChunk(text);
-        } catch {
-          // 忽略解析错误
-        }
-      }
-    }
-  }
+export function parseMcpListDir(text: string, basePath: string): MCPFile[] {
+  return text
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [name, type] = line.split(' ');
+      return {
+        name,
+        type: type === '[dir]' ? 'dir' : 'file',
+        path: basePath === '.' ? name : `${basePath}/${name}`,
+      };
+    });
 }

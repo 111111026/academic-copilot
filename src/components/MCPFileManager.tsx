@@ -3,19 +3,12 @@
 import { useState } from 'react';
 import { Button, Modal, List, Tag, message, Spin, Alert, Select } from 'antd';
 import { FolderOpenOutlined, ExportOutlined, ImportOutlined } from '@ant-design/icons';
-import { callTool } from '@/lib/mcp-client';
-import { buildPaperFromPdf } from '@/lib/pdf';
-import { savePaper } from '@/lib/db';
-import { chat } from '@/lib/llm';
+import { callTool, parseMcpListDir, type MCPFile } from '@/lib/mcp-client';
+import { base64ToFile, buildPaperFromPdf } from '@/lib/pdf';
+import { getAllPapers, savePaper } from '@/lib/db';
+import { enrichMetadata } from '@/lib/enrich';
+import { formatPapers, exportFilename, type ExportFormat } from '@/lib/export';
 import { useSettings } from '@/lib/settings';
-import { PROMPTS } from '@/config/prompts';
-import type { Paper } from '@/types/paper';
-
-interface MCPFile {
-  name: string;
-  type: 'file' | 'dir';
-  path: string;
-}
 
 export default function MCPFileManager() {
   const [open, setOpen] = useState(false);
@@ -24,7 +17,7 @@ export default function MCPFileManager() {
   const [currentPath, setCurrentPath] = useState('.');
   const [error, setError] = useState('');
   const [importing, setImporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'json' | 'bibtex' | 'markdown'>('json');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
 
   const llm = useSettings((s) => s.settings.llm);
 
@@ -34,15 +27,7 @@ export default function MCPFileManager() {
     try {
       const res = await callTool('filesystem', 'list_dir', { path });
       const text = res.content?.[0]?.text || '';
-      const items: MCPFile[] = text.split('\n').filter(Boolean).map((line) => {
-        const [name, type] = line.split(' ');
-        return {
-          name,
-          type: type === '[dir]' ? 'dir' : 'file',
-          path: path === '.' ? name : `${path}/${name}`,
-        };
-      });
-      setFiles(items);
+      setFiles(parseMcpListDir(text, path));
       setCurrentPath(path);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -66,50 +51,15 @@ export default function MCPFileManager() {
     try {
       for (const pdfFile of pdfFiles) {
         try {
-          // 读取 PDF 文件内容（base64）
           const readRes = await callTool('filesystem', 'read_file', { path: pdfFile.path });
           const base64Content = readRes.content?.[0]?.text;
-
           if (!base64Content) {
             failCount++;
             continue;
           }
 
-          // 将 base64 转换为 File 对象
-          const binaryString = atob(base64Content);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          const file = new File([bytes], pdfFile.name, { type: 'application/pdf' });
-
-          // 构建文献对象
-          const paper = await buildPaperFromPdf({ file });
-
-          // 尝试用 LLM 提取元数据
-          if (llm.apiKey && paper.fullText) {
-            try {
-              const reply = await chat(llm, {
-                messages: [
-                  { role: 'system', content: PROMPTS.extractTitle.systemPrompt },
-                  { role: 'user', content: paper.fullText.slice(0, 3000) },
-                ],
-                temperature: 0,
-                maxTokens: 300,
-              });
-              const cleaned = reply.trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '').trim();
-              const json = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] ?? cleaned);
-              paper.title = typeof json.title === 'string' && json.title.trim() ? json.title.trim() : paper.title;
-              paper.authors = Array.isArray(json.authors)
-                ? json.authors.filter((a: unknown): a is string => typeof a === 'string' && a.trim() !== '')
-                : paper.authors;
-              paper.year = typeof json.year === 'number' && Number.isFinite(json.year) ? json.year : paper.year;
-            } catch {
-              // LLM 提取失败，保留文件名
-            }
-          }
-
-          // 保存到数据库
+          const file = base64ToFile(base64Content, pdfFile.name);
+          const paper = await enrichMetadata(await buildPaperFromPdf({ file }), llm);
           await savePaper(paper);
           successCount++;
         } catch (err) {
@@ -128,10 +78,7 @@ export default function MCPFileManager() {
   };
 
   const exportPapers = async () => {
-    // 从数据库获取所有文献
-    const { db } = await import('@/lib/db');
-    const papers = await db.papers.toArray();
-
+    const papers = await getAllPapers();
     if (papers.length === 0) {
       message.warning('没有文献可导出');
       return;
@@ -139,23 +86,8 @@ export default function MCPFileManager() {
 
     setLoading(true);
     try {
-      let content: string;
-      let filename: string;
-
-      switch (exportFormat) {
-        case 'bibtex':
-          content = papers.map(paperToBibTeX).join('\n\n');
-          filename = 'papers.bib';
-          break;
-        case 'markdown':
-          content = papers.map(paperToMarkdown).join('\n\n---\n\n');
-          filename = 'papers.md';
-          break;
-        default:
-          content = JSON.stringify({ exportDate: new Date().toISOString(), papers }, null, 2);
-          filename = 'papers.json';
-      }
-
+      const content = formatPapers(papers, exportFormat);
+      const filename = exportFilename(exportFormat);
       await callTool('filesystem', 'write_file', { path: filename, content });
       message.success(`已导出 ${papers.length} 篇文献到 ${filename}`);
     } catch (err) {
@@ -245,33 +177,4 @@ export default function MCPFileManager() {
       </Modal>
     </>
   );
-}
-
-// ===== 导出格式转换 =====
-
-function paperToBibTeX(paper: Paper): string {
-  const key = (paper.authors[0]?.split(' ')[0] || 'unknown') + (paper.year || '') + (paper.title?.split(' ')[0] || '');
-  return `@article{${key},
-  title={${paper.title || 'Untitled'}},
-  author={${paper.authors.join(' and ')}},
-  year={${paper.year || 'unknown'}},
-  abstract={${paper.abstract || ''}}
-}`;
-}
-
-function paperToMarkdown(paper: Paper): string {
-  return `# ${paper.title || 'Untitled'}
-
-**作者**: ${paper.authors.join(', ') || '未知'}
-**年份**: ${paper.year || '未知'}
-**来源**: ${paper.source}
-
-## 摘要
-
-${paper.abstract || '无摘要'}
-
-## 全文
-
-${paper.fullText?.slice(0, 500) || '无内容'}...
-`;
 }

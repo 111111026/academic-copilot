@@ -16,7 +16,8 @@ import {
 import { CheckCircleOutlined } from '@ant-design/icons';
 import AppShell from '@/components/AppShell';
 import { useSettings } from '@/lib/settings';
-import { PROVIDER_PRESETS, type LlmProvider } from '@/types/settings';
+import { PROVIDER_PRESETS } from '@/config/settings';
+import type { LlmProvider } from '@/types/settings';
 import { chat } from '@/lib/llm';
 
 export default function SettingsPage() {

@@ -30,7 +30,7 @@ import Link from 'next/link';
 import Markdown from 'react-markdown';
 import AppShell from '@/components/AppShell';
 import { getBuiltinSkill } from '@/config/skills';
-import { db, deleteCustomSkill, saveExecution } from '@/lib/db';
+import { deleteCustomSkill, getCustomSkill, getExecution, saveExecution } from '@/lib/db';
 import { downloadTextFile, localDateStamp } from '@/lib/download';
 import { runSkill } from '@/lib/skill-engine';
 import { copyText } from '@/lib/clipboard';
@@ -66,7 +66,7 @@ function SkillRunBody() {
       setLoading(false);
       return;
     }
-    db.customSkills.get(id).then((s) => {
+    getCustomSkill(id).then((s) => {
       setSkill(s ?? null);
       setLoading(false);
     });
@@ -88,7 +88,7 @@ function SkillRunBody() {
   useEffect(() => {
     if (!execParam) return;
     setExecLoading(true);
-    db.skillExecutions.get(execParam).then((row) => {
+    getExecution(execParam).then((row) => {
       if (row) {
         setExecution(row);
         setInputs(row.userInputs);

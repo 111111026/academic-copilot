@@ -2,7 +2,8 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_SETTINGS, PROVIDER_PRESETS, type Settings, type LlmProvider } from '@/types/settings';
+import { DEFAULT_SETTINGS, PROVIDER_PRESETS } from '@/config/settings';
+import type { Settings, LlmProvider } from '@/types/settings';
 
 interface SettingsStore {
   settings: Settings;

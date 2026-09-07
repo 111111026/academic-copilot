@@ -26,10 +26,9 @@ import {
 } from '@ant-design/icons';
 import Link from 'next/link';
 import Markdown from 'react-markdown';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import AppShell from '@/components/AppShell';
-import { db, deleteComparison, saveComparison } from '@/lib/db';
+import { deleteComparison, saveComparison, usePapersByDate, useComparisonsByDate } from '@/lib/db';
 import { chat } from '@/lib/llm';
 import { useSettings } from '@/lib/settings';
 import { PROMPTS } from '@/config/prompts';
@@ -50,10 +49,8 @@ import type { Comparison, Paper } from '@/types';
 type ResultRow = Record<string, string>;
 
 export default function ComparePage() {
-  const papersQuery = useLiveQuery(() => db.papers.orderBy('addedAt').reverse().toArray());
-  const comparisonsQuery = useLiveQuery(() =>
-    db.comparisons.orderBy('createdAt').reverse().toArray(),
-  );
+  const papersQuery = usePapersByDate();
+  const comparisonsQuery = useComparisonsByDate();
   const llm = useSettings((s) => s.settings.llm);
 
   const papers = useMemo(() => papersQuery ?? [], [papersQuery]);

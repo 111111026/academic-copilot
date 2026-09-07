@@ -16,18 +16,16 @@ import {
 } from 'antd';
 import { InboxOutlined, DeleteOutlined, ReadOutlined } from '@ant-design/icons';
 import Link from 'next/link';
-import { useLiveQuery } from 'dexie-react-hooks';
 import AppShell from '@/components/AppShell';
 import MCPFileManager from '@/components/MCPFileManager';
-import { db, deletePaper, savePaper } from '@/lib/db';
+import { deletePaper, savePaper, usePapersByDate } from '@/lib/db';
 import { buildPaperFromPdf } from '@/lib/pdf';
-import { chat } from '@/lib/llm';
+import { enrichMetadata } from '@/lib/enrich';
 import { useSettings } from '@/lib/settings';
-import { PROMPTS } from '@/config/prompts';
 import type { Paper } from '@/types/paper';
 
 export default function WorkspacePage() {
-  const papers = useLiveQuery(() => db.papers.orderBy('addedAt').reverse().toArray(), [], [] as Paper[]);
+  const papers = usePapersByDate();
   const llm = useSettings((s) => s.settings.llm);
   const [pending, setPending] = useState(0);
   const [error, setError] = useState('');
@@ -44,37 +42,10 @@ export default function WorkspacePage() {
     );
   }, [papers, search]);
 
-  // 尽力提取题录；未配置 Key 或模型返回异常时保留文件名兜底，不阻断导入
-  const enrichMetadata = async (paper: Paper): Promise<Paper> => {
-    if (!llm.apiKey || !paper.fullText) return paper;
-    try {
-      const reply = await chat(llm, {
-        messages: [
-          { role: 'system', content: PROMPTS.extractTitle.systemPrompt },
-          { role: 'user', content: paper.fullText.slice(0, 3000) },
-        ],
-        temperature: 0,
-        maxTokens: 300,
-      });
-      const cleaned = reply.trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '').trim();
-      const json = JSON.parse(cleaned.match(/\{[\s\S]*\}/)?.[0] ?? cleaned);
-      return {
-        ...paper,
-        title: typeof json.title === 'string' && json.title.trim() ? json.title.trim() : paper.title,
-        authors: Array.isArray(json.authors)
-          ? json.authors.filter((a: unknown): a is string => typeof a === 'string' && a.trim() !== '')
-          : paper.authors,
-        year: typeof json.year === 'number' && Number.isFinite(json.year) ? json.year : paper.year,
-      };
-    } catch {
-      return paper;
-    }
-  };
-
   const processFile = async (file: File) => {
     setPending((n) => n + 1);
     try {
-      const paper = await enrichMetadata(await buildPaperFromPdf({ file }));
+      const paper = await enrichMetadata(await buildPaperFromPdf({ file }), llm);
       await savePaper(paper);
       messageApi.success(`已导入「${paper.title.slice(0, 40)}」`);
     } catch (e) {

@@ -5,7 +5,7 @@ import { Button, Card, Empty, Popconfirm, Space, Table, Tag, Typography, message
 import { ArrowLeftOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import AppShell from '@/components/AppShell';
-import { db, deleteExecution } from '@/lib/db';
+import { deleteExecution, getExecutionsByDate } from '@/lib/db';
 import type { SkillExecution } from '@/types/execution';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
@@ -21,14 +21,10 @@ export default function HistoryPage() {
   const [messageApi, contextHolder] = message.useMessage();
 
   const load = () => {
-    db.skillExecutions
-      .orderBy('startedAt')
-      .reverse()
-      .toArray()
-      .then((rows) => {
-        setExecutions(rows);
-        setLoading(false);
-      });
+    getExecutionsByDate().then((rows) => {
+      setExecutions(rows);
+      setLoading(false);
+    });
   };
 
   useEffect(load, []);

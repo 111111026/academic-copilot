@@ -16,9 +16,8 @@ import { ThunderboltOutlined, SendOutlined, ArrowLeftOutlined } from '@ant-desig
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Markdown from 'react-markdown';
-import { useLiveQuery } from 'dexie-react-hooks';
 import AppShell from '@/components/AppShell';
-import { db } from '@/lib/db';
+import { usePaper, updatePaperSummary } from '@/lib/db';
 import { chat } from '@/lib/llm';
 import { retrieveContext } from '@/lib/pdf';
 import { useSettings } from '@/lib/settings';
@@ -35,10 +34,7 @@ function PaperDetailBody() {
   const id = searchParams.get('id');
   // undefined = 查询还没落地，null = 确实没有这篇文献。
   // 两者都返回 undefined 的话，坏 ID 会永远停在加载态转圈
-  const paper = useLiveQuery(
-    async () => (id ? ((await db.papers.get(id)) ?? null) : null),
-    [id],
-  );
+  const paper = usePaper(id);
   const llm = useSettings((s) => s.settings.llm);
 
   const [summary, setSummary] = useState('');
@@ -69,7 +65,7 @@ function PaperDetailBody() {
         temperature: 0.3,
         onDelta: (d) => setSummary((prev) => prev + d),
       });
-      await db.papers.update(paper.id, { summary: text });
+      await updatePaperSummary(paper.id, text);
     } catch (e) {
       setError((e as Error).message);
     } finally {
