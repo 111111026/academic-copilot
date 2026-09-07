@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 研途智伴 Academic Copilot
 
 ![研途智伴](./docs/cover.png)
